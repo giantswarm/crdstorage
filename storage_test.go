@@ -1,4 +1,4 @@
-package tprstorage
+package crdstorage
 
 import (
 	"testing"
