@@ -1,4 +1,4 @@
-package: github.com/giantswarm/tprstorage
+package: github.com/giantswarm/crdstorage
 import:
 - package: github.com/giantswarm/microerror
   version: master

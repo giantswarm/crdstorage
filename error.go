@@ -1,4 +1,4 @@
-package tprstorage
+package crdstorage
 
 import (
 	"github.com/giantswarm/microerror"

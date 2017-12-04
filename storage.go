@@ -1,4 +1,4 @@
-package tprstorage
+package crdstorage
 
 import (
 	"context"
@@ -22,7 +22,7 @@ const (
 	tpoCreateMaxElapsedTime = 30 * time.Second
 )
 
-type TPRConfig struct {
+type CRDConfig struct {
 	Name, Version, Description string
 }
 
@@ -38,11 +38,11 @@ type Config struct {
 
 	// Settings.
 
-	// TPR is the third party resource where data objects are stored.
-	TPR TPRConfig
+	// CRD is the third party resource where data objects are stored.
+	CRD CRDConfig
 
 	// TPOName is the third party object used to store data. This object
-	// will be created inside a third party resource specified by TPR. If
+	// will be created inside a third party resource specified by CRD. If
 	// the object already exists it will be reused. It is safe to run
 	// multiple Storage instances using the same TPO.
 	TPO TPOConfig
@@ -57,10 +57,10 @@ func DefaultConfig() Config {
 
 		// Settings.
 
-		TPR: TPRConfig{
-			Name:        "tpr-storage.giantswarm.io",
+		CRD: CRDConfig{
+			Name:        "crd-storage.giantswarm.io",
 			Version:     "v1",
-			Description: "Storage data managed by github.com/giantswarm/tprstorage",
+			Description: "Storage data managed by github.com/giantswarm/crdstorage",
 		},
 
 		TPO: TPOConfig{
@@ -93,13 +93,13 @@ func New(config Config) (*Storage, error) {
 	if config.Logger == nil {
 		return nil, microerror.Maskf(invalidConfigError, "config.Logger is nil")
 	}
-	if config.TPR.Name == "" {
-		return nil, microerror.Maskf(invalidConfigError, "config.TPR.Name is empty")
+	if config.CRD.Name == "" {
+		return nil, microerror.Maskf(invalidConfigError, "config.CRD.Name is empty")
 	}
-	if config.TPR.Version == "" {
-		return nil, microerror.Maskf(invalidConfigError, "config.TPR.Version is empty")
+	if config.CRD.Version == "" {
+		return nil, microerror.Maskf(invalidConfigError, "config.CRD.Version is empty")
 	}
-	// config.TPR.Description is OK to be empty.
+	// config.CRD.Description is OK to be empty.
 	if config.TPO.Name == "" {
 		return nil, microerror.Maskf(invalidConfigError, "config.TPO.Name is empty")
 	}
@@ -107,7 +107,7 @@ func New(config Config) (*Storage, error) {
 		config.TPO.Namespace = "default"
 	}
 
-	var newTPR *tpr.TPR
+	var newCRD *tpr.TPR
 	{
 		c := tpr.DefaultConfig()
 
@@ -115,13 +115,13 @@ func New(config Config) (*Storage, error) {
 
 		c.K8sClient = config.K8sClient
 
-		c.Name = config.TPR.Name
-		c.Version = config.TPR.Version
-		c.Description = config.TPR.Description
+		c.Name = config.CRD.Name
+		c.Version = config.CRD.Version
+		c.Description = config.CRD.Description
 
 		var err error
 
-		newTPR, err = tpr.New(c)
+		newCRD, err = tpr.New(c)
 		if err != nil {
 			return nil, microerror.Mask(err)
 		}
@@ -130,16 +130,16 @@ func New(config Config) (*Storage, error) {
 	storage := &Storage{
 		k8sClient: config.K8sClient,
 		logger: config.Logger.With(
-			"tprName", config.TPR.Name,
-			"tprVersion", config.TPR.Version,
+			"tprName", config.CRD.Name,
+			"tprVersion", config.CRD.Version,
 			"tpoName", config.TPO.Name,
 			"tpoNamespace", config.TPO.Namespace,
 		),
 
-		tpr: newTPR,
+		tpr: newCRD,
 
-		tpoEndpoint:     newTPR.Endpoint(config.TPO.Namespace) + "/" + config.TPO.Name,
-		tpoListEndpoint: newTPR.Endpoint(config.TPO.Namespace),
+		tpoEndpoint:     newCRD.Endpoint(config.TPO.Namespace) + "/" + config.TPO.Name,
+		tpoListEndpoint: newCRD.Endpoint(config.TPO.Namespace),
 
 		tpoConfig: config.TPO,
 	}
@@ -150,15 +150,15 @@ func New(config Config) (*Storage, error) {
 // Boot initializes the Storage by ensuring Kubernetes resources used by the
 // Storage are in place. It is safe to call Boot more than once.
 func (s *Storage) Boot(ctx context.Context) error {
-	// Create TPR resource.
+	// Create CRD resource.
 	{
 		err := s.tpr.CreateAndWait()
 		if tpr.IsAlreadyExists(err) {
-			s.logger.Log("debug", "TPR already exists")
+			s.logger.Log("debug", "CRD already exists")
 		} else if err != nil {
 			return microerror.Mask(err)
 		} else {
-			s.logger.Log("debug", "TPR created")
+			s.logger.Log("debug", "CRD created")
 		}
 	}
 

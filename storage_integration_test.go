@@ -1,6 +1,6 @@
 // +build integration
 
-package tprstorage
+package crdstorage
 
 /*
 	Usage:
