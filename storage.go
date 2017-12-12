@@ -4,229 +4,155 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
-	"time"
 
 	"github.com/cenkalti/backoff"
+	"github.com/giantswarm/apiextensions/pkg/apis/core/v1alpha1"
+	"github.com/giantswarm/apiextensions/pkg/clientset/versioned"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/giantswarm/microstorage"
-	"github.com/giantswarm/operatorkit/tpr"
+	"github.com/giantswarm/operatorkit/crdclient"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	apismeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	api "k8s.io/client-go/pkg/api/v1"
 )
 
-const (
-	tpoCreateMaxElapsedTime = 30 * time.Second
-)
-
-type CRDConfig struct {
-	Name, Version, Description string
-}
-
-type TPOConfig struct {
-	Name, Namespace string
-}
-
 type Config struct {
-	// Dependencies.
-
+	CRDClient crdclient.CRDClient
+	G8sClient versioned.Interface
 	K8sClient kubernetes.Interface
 	Logger    micrologger.Logger
 
-	// Settings.
-
-	// CRD is the third party resource where data objects are stored.
-	CRD CRDConfig
-
-	// TPOName is the third party object used to store data. This object
-	// will be created inside a third party resource specified by CRD. If
-	// the object already exists it will be reused. It is safe to run
-	// multiple Storage instances using the same TPO.
-	TPO TPOConfig
+	CRD       *apiextensionsv1beta1.CustomResourceDefinition
+	Name      string
+	Namespace *api.Namespace
 }
 
 func DefaultConfig() Config {
 	return Config{
-		// Dependencies.
+		CRDClient: nil,
+		G8sClient: nil,
+		K8sClient: nil,
+		Logger:    nil,
 
-		K8sClient: nil, // Required.
-		Logger:    nil, // Required.
-
-		// Settings.
-
-		CRD: CRDConfig{
-			Name:        "crd-storage.giantswarm.io",
-			Version:     "v1",
-			Description: "Storage data managed by github.com/giantswarm/crdstorage",
-		},
-
-		TPO: TPOConfig{
-			Name:      "", // Required.
-			Namespace: "giantswarm",
-		},
+		CRD:       nil,
+		Name:      "",
+		Namespace: nil,
 	}
 }
 
 type Storage struct {
-	logger micrologger.Logger
-	logctx []interface{}
-
+	crdClient crdclient.CRDClient
+	g8sClient versioned.Interface
 	k8sClient kubernetes.Interface
-	tpr       *tpr.TPR
+	logger    micrologger.Logger
 
-	tpoEndpoint     string
-	tpoListEndpoint string
-
-	// tpoConfig is used to boot the Storage. See Boot method.
-	tpoConfig TPOConfig
+	crd       *apiextensionsv1beta1.CustomResourceDefinition
+	name      string
+	namespace *api.Namespace
 }
 
-// New creates an uninitialized instance of Storage. It is required to call
-// Boot functions before running any RW operations.
+// New creates an uninitialized instance of Storage. It is required to call Boot
+// before running any read/write operations against the returned Storage
+// instance.
 func New(config Config) (*Storage, error) {
+	if config.CRDClient == nil {
+		return nil, microerror.Maskf(invalidConfigError, "config.CRDClient must not be empty")
+	}
+	if config.G8sClient == nil {
+		return nil, microerror.Maskf(invalidConfigError, "config.G8sClient must not be empty")
+	}
 	if config.K8sClient == nil {
-		return nil, microerror.Maskf(invalidConfigError, "config.K8sClient is nil")
+		return nil, microerror.Maskf(invalidConfigError, "config.K8sClient must not be empty")
 	}
 	if config.Logger == nil {
-		return nil, microerror.Maskf(invalidConfigError, "config.Logger is nil")
-	}
-	if config.CRD.Name == "" {
-		return nil, microerror.Maskf(invalidConfigError, "config.CRD.Name is empty")
-	}
-	if config.CRD.Version == "" {
-		return nil, microerror.Maskf(invalidConfigError, "config.CRD.Version is empty")
-	}
-	// config.CRD.Description is OK to be empty.
-	if config.TPO.Name == "" {
-		return nil, microerror.Maskf(invalidConfigError, "config.TPO.Name is empty")
-	}
-	if config.TPO.Namespace == "" {
-		config.TPO.Namespace = "default"
+		return nil, microerror.Maskf(invalidConfigError, "config.Logger must not be empty")
 	}
 
-	var newCRD *tpr.TPR
-	{
-		c := tpr.DefaultConfig()
-
-		c.Logger = config.Logger
-
-		c.K8sClient = config.K8sClient
-
-		c.Name = config.CRD.Name
-		c.Version = config.CRD.Version
-		c.Description = config.CRD.Description
-
-		var err error
-
-		newCRD, err = tpr.New(c)
-		if err != nil {
-			return nil, microerror.Mask(err)
-		}
+	if config.CRD == nil {
+		return nil, microerror.Maskf(invalidConfigError, "config.CRD must not be empty")
+	}
+	if config.Name == nil {
+		return nil, microerror.Maskf(invalidConfigError, "config.Name must not be empty")
+	}
+	if config.Namespace == nil {
+		return nil, microerror.Maskf(invalidConfigError, "config.Namespace must not be empty")
 	}
 
-	storage := &Storage{
+	s := &Storage{
+		crdClient: config.CRDClient,
+		g8sClient: config.G8sClient,
 		k8sClient: config.K8sClient,
 		logger: config.Logger.With(
-			"tprName", config.CRD.Name,
-			"tprVersion", config.CRD.Version,
-			"tpoName", config.TPO.Name,
-			"tpoNamespace", config.TPO.Namespace,
+			"crdName", config.CRD.Name,
+			"crdVersion", config.CRD.Version,
 		),
 
-		tpr: newCRD,
-
-		tpoEndpoint:     newCRD.Endpoint(config.TPO.Namespace) + "/" + config.TPO.Name,
-		tpoListEndpoint: newCRD.Endpoint(config.TPO.Namespace),
-
-		tpoConfig: config.TPO,
+		crd:       config.CRD,
+		name:      config.Name,
+		namespace: config.Namespace,
 	}
 
-	return storage, nil
+	return s, nil
 }
 
 // Boot initializes the Storage by ensuring Kubernetes resources used by the
 // Storage are in place. It is safe to call Boot more than once.
 func (s *Storage) Boot(ctx context.Context) error {
-	// Create CRD resource.
+	// Create CRD.
 	{
-		err := s.tpr.CreateAndWait()
-		if tpr.IsAlreadyExists(err) {
-			s.logger.Log("debug", "CRD already exists")
-		} else if err != nil {
+		backOff := backoff.NewExponentialBackOff()
+		backOff.MaxElapsedTime = 0
+		backOff = backoff.WithMaxTries(backOff, 7)
+
+		err := s.crdClient.Ensure(ctx, s.crd, backOff)
+		if err != nil {
 			return microerror.Mask(err)
-		} else {
-			s.logger.Log("debug", "CRD created")
 		}
 	}
 
 	// Create namespace.
 	{
-		ns := api.Namespace{
-			ObjectMeta: apismeta.ObjectMeta{
-				Name:      s.tpoConfig.Namespace,
-				Namespace: s.tpoConfig.Namespace,
-				// TODO think about labels
-			},
-		}
-		_, err := s.k8sClient.CoreV1().Namespaces().Create(&ns)
+		_, err := s.k8sClient.CoreV1().Namespaces().Create(s.namespace)
 		if errors.IsAlreadyExists(err) {
-			s.logger.Log("debug", "namespace "+ns.Name+" already exists")
+			// TODO logs
 		} else if err != nil {
-			return microerror.Maskf(err, "creating namespace %#v", ns)
+			return microerror.Mask(err)
 		} else {
-			s.logger.Log("debug", "namespace "+ns.Name+" created")
+			// TODO logs
 		}
 	}
 
-	// Create TPO.
+	// Create CRO.
 	{
-		tpo := customObject{
-			TypeMeta: apismeta.TypeMeta{
-				Kind:       s.tpr.Kind(),
-				APIVersion: s.tpr.APIVersion(),
-			},
-			ObjectMeta: apismeta.ObjectMeta{
-				Name:      s.tpoConfig.Name,
-				Namespace: s.tpoConfig.Namespace,
-				Annotations: map[string]string{
-					"storageDoNotOmitempty": "non-empty",
-				},
-				// TODO think about labels
-			},
+		storageConfig := &v1alpha1.StorageConfig{}
 
-			// Data must be not empty so patches do not fail.
-			Data: map[string]string{},
-		}
-		body, err := json.Marshal(&tpo)
-		if err != nil {
-			return microerror.Maskf(err, "marshaling %#v", tpo)
-		}
+		storageConfig.Kind = "StorageConfig"
+		storageConfig.APIVersion = "core.giantswarm.io"
+		storageConfig.Name = s.name
+		storageConfig.Namespace = s.namespace.Name
+		storageConfig.Spec.Storage.Data = map[string]string{}
 
-		createTpo := func() error {
-			_, err = s.k8sClient.Core().RESTClient().
-				Post().
-				Context(ctx).
-				AbsPath(s.tpoListEndpoint).
-				Body(body).
-				DoRaw()
+		operation := func() error {
+			_, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Create(storageConfig)
 			if errors.IsAlreadyExists(err) {
-				s.logger.Log("debug", "TPO "+tpo.Name+" already exists")
+				// TODO logs
 			} else if err != nil {
-				return microerror.Maskf(err, "creating TPO %#v", tpo)
+				return microerror.Mask(err)
 			} else {
-				s.logger.Log("debug", "TPO "+tpo.Name+" created")
+				// TODO logs
 			}
 
 			return nil
 		}
 
-		createTpoBackoff := backoff.NewExponentialBackOff()
-		createTpoBackoff.MaxElapsedTime = tpoCreateMaxElapsedTime
+		backOff := backoff.NewExponentialBackOff()
+		backOff.MaxElapsedTime = 0
+		backOff = backoff.WithMaxTries(backOff, 7)
 
-		err = backoff.Retry(createTpo, createTpoBackoff)
+		err := backoff.Retry(operation, backOff)
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -236,33 +162,24 @@ func (s *Storage) Boot(ctx context.Context) error {
 }
 
 func (s *Storage) Put(ctx context.Context, kv microstorage.KV) error {
-	key, value := kv.Key(), kv.Val()
+	var err error
 
 	var body []byte
 	{
 		v := struct {
-			Data map[string]string `json:"data"`
-		}{
-			Data: map[string]string{
-				key: value,
-			},
-		}
+			Spec v1alpha1.StorageConfigSpec `json:"spec"`
+		}{}
+		v.Spec.Storage.Data[kv.Key()] = kv.Val()
 
-		var err error
-		body, err = json.Marshal(&v)
+		body, err = json.Marshal(v)
 		if err != nil {
-			return microerror.Maskf(err, "marshaling %#v", v)
+			return microerror.Mask(err)
 		}
 	}
 
-	_, err := s.k8sClient.Core().RESTClient().
-		Patch(types.MergePatchType).
-		Context(ctx).
-		AbsPath(s.tpoEndpoint).
-		Body(body).
-		DoRaw()
+	_, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Patch(s.name, typey.MergePatchType, body)
 	if err != nil {
-		return microerror.Maskf(err, "putting key=%s, patch=%s", key, body)
+		return microerror.Mask(err)
 	}
 
 	return nil
