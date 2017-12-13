@@ -1,5 +1,5 @@
-hash: c26e313d7653c66a297cc50a163cd8fae908bc5a0b17988c01448800f1653c7e
-updated: 2017-10-26T14:35:21.194631818+02:00
+hash: 60badb0a5ad88b00d17cdc5af51374eaaec32b82eb4eb53f9948175ab2b29988
+updated: 2017-12-13T10:25:15.182327+01:00
 imports:
 - name: github.com/cenkalti/backoff
   version: 61153c768f31ee5f130071d08fc82b85208528de
@@ -20,20 +20,30 @@ imports:
   version: dcef7f55730566d41eae5db10e7d6981829720f6
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
-- name: github.com/giantswarm/microerror
-  version: 5ade94eb4ee35ef72eb9382228470caeddb29989
-- name: github.com/giantswarm/micrologger
-  version: 8a69b2ab80ba2d0bd40d609206518fefacfc8fdf
+- name: github.com/giantswarm/apiextensions
+  version: 89a3f9a3ebdc24933223551964b0856ec9ad749f
   subpackages:
+  - pkg/apis/core/v1alpha1
+  - pkg/apis/provider/v1alpha1
+  - pkg/clientset/versioned
+  - pkg/clientset/versioned/scheme
+  - pkg/clientset/versioned/typed/core/v1alpha1
+  - pkg/clientset/versioned/typed/provider/v1alpha1
+- name: github.com/giantswarm/microerror
+  version: ec5f66bb657662031c0d651504fee6908cdf28d9
+- name: github.com/giantswarm/micrologger
+  version: bab5376fda89f10a5ebc5bd9feedab634400ab75
+  subpackages:
+  - loggermeta
   - microloggertest
 - name: github.com/giantswarm/microstorage
   version: 99418478ec8f5c68f9b5fc5e6be7e0474948f80d
   subpackages:
   - storagetest
 - name: github.com/giantswarm/operatorkit
-  version: 8ca2a1dcf8ac196e2943de53932ddd87cf21bc08
+  version: 8b3446a2ecbe707fb6ba351b035cd60508af5aec
   subpackages:
-  - tpr
+  - client/k8scrdclient
 - name: github.com/go-kit/kit
   version: a9ca6725cbbea455e61c6bc8a1ed28e81eb3493b
   subpackages:
@@ -63,10 +73,6 @@ imports:
   version: 44145f04b68cf362d9c4df2182967c2275eaefed
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
-- name: github.com/hashicorp/golang-lru
-  version: a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4
-  subpackages:
-  - simplelru
 - name: github.com/juju/errgo
   version: 08cceb5d0b5331634b9826762a8fd53b29b86ad8
 - name: github.com/juju/ratelimit
@@ -123,6 +129,14 @@ imports:
   version: 3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
+- name: k8s.io/apiextensions-apiserver
+  version: fcd622fe88a4a6efcb5aea9e94ee87324ac1b036
+  subpackages:
+  - pkg/apis/apiextensions
+  - pkg/apis/apiextensions/v1beta1
+  - pkg/client/clientset/clientset
+  - pkg/client/clientset/clientset/scheme
+  - pkg/client/clientset/clientset/typed/apiextensions/v1beta1
 - name: k8s.io/apimachinery
   version: 8ab5f3d8a330c2e9baaf84e39042db8d49034ae2
   subpackages:
@@ -152,7 +166,6 @@ imports:
   - pkg/runtime/serializer/versioning
   - pkg/selection
   - pkg/types
-  - pkg/util/cache
   - pkg/util/clock
   - pkg/util/diff
   - pkg/util/errors
@@ -236,7 +249,6 @@ imports:
   - pkg/version
   - rest
   - rest/watch
-  - tools/cache
   - tools/clientcmd/api
   - tools/metrics
   - transport
