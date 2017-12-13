@@ -167,7 +167,7 @@ func (s *Storage) Delete(ctx context.Context, k microstorage.K) error {
 
 	var body []byte
 	{
-		v := deletionConfig{}
+		v := storageConfigJSONPatch{}
 		v.Spec.Storage.Data[k.Key()] = nil
 
 		body, err = json.Marshal(&v)

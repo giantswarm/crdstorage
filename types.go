@@ -1,13 +1,13 @@
 package crdstorage
 
-type deletionConfig struct {
-	Spec deletionConfigSpec `json:"spec"`
+type storageConfigJSONPatch struct {
+	Spec storageConfigJSONPatchSpec `json:"spec"`
 }
 
-type deletionConfigSpec struct {
-	Storage deletionConfigSpecStorage `json:"storage" yaml:"storage"`
+type storageConfigJSONPatchSpec struct {
+	Storage storageConfigJSONPatchSpecStorage `json:"storage" yaml:"storage"`
 }
 
-type deletionConfigSpecStorage struct {
+type storageConfigJSONPatchSpecStorage struct {
 	Data map[string]*string `json:"data" yaml:"data"`
 }
