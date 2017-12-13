@@ -11,16 +11,17 @@ import (
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/giantswarm/microstorage"
-	"github.com/giantswarm/operatorkit/crdclient"
+	"github.com/giantswarm/operatorkit/client/k8scrdclient"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apismetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	api "k8s.io/client-go/pkg/api/v1"
 )
 
 type Config struct {
-	CRDClient crdclient.CRDClient
+	CRDClient *k8scrdclient.CRDClient
 	G8sClient versioned.Interface
 	K8sClient kubernetes.Interface
 	Logger    micrologger.Logger
@@ -44,7 +45,7 @@ func DefaultConfig() Config {
 }
 
 type Storage struct {
-	crdClient crdclient.CRDClient
+	crdClient *k8scrdclient.CRDClient
 	g8sClient versioned.Interface
 	k8sClient kubernetes.Interface
 	logger    micrologger.Logger
@@ -74,7 +75,7 @@ func New(config Config) (*Storage, error) {
 	if config.CRD == nil {
 		return nil, microerror.Maskf(invalidConfigError, "config.CRD must not be empty")
 	}
-	if config.Name == nil {
+	if config.Name == "" {
 		return nil, microerror.Maskf(invalidConfigError, "config.Name must not be empty")
 	}
 	if config.Namespace == nil {
@@ -86,8 +87,8 @@ func New(config Config) (*Storage, error) {
 		g8sClient: config.G8sClient,
 		k8sClient: config.K8sClient,
 		logger: config.Logger.With(
-			"crdName", config.CRD.Name,
-			"crdVersion", config.CRD.Version,
+			"crdName", config.CRD.GetName(),
+			"crdVersion", config.CRD.GroupVersionKind(),
 		),
 
 		crd:       config.CRD,
@@ -103,9 +104,9 @@ func New(config Config) (*Storage, error) {
 func (s *Storage) Boot(ctx context.Context) error {
 	// Create CRD.
 	{
-		backOff := backoff.NewExponentialBackOff()
-		backOff.MaxElapsedTime = 0
-		backOff = backoff.WithMaxTries(backOff, 7)
+		b := backoff.NewExponentialBackOff()
+		b.MaxElapsedTime = 0
+		backOff := backoff.WithMaxTries(b, 7)
 
 		err := s.crdClient.Ensure(ctx, s.crd, backOff)
 		if err != nil {
@@ -148,9 +149,9 @@ func (s *Storage) Boot(ctx context.Context) error {
 			return nil
 		}
 
-		backOff := backoff.NewExponentialBackOff()
-		backOff.MaxElapsedTime = 0
-		backOff = backoff.WithMaxTries(backOff, 7)
+		b := backoff.NewExponentialBackOff()
+		b.MaxElapsedTime = 0
+		backOff := backoff.WithMaxTries(b, 7)
 
 		err := backoff.Retry(operation, backOff)
 		if err != nil {
@@ -161,23 +162,21 @@ func (s *Storage) Boot(ctx context.Context) error {
 	return nil
 }
 
-func (s *Storage) Put(ctx context.Context, kv microstorage.KV) error {
+func (s *Storage) Delete(ctx context.Context, k microstorage.K) error {
 	var err error
 
 	var body []byte
 	{
-		v := struct {
-			Spec v1alpha1.StorageConfigSpec `json:"spec"`
-		}{}
-		v.Spec.Storage.Data[kv.Key()] = kv.Val()
+		v := deletionConfig{}
+		v.Spec.Storage.Data[k.Key()] = nil
 
-		body, err = json.Marshal(v)
+		body, err = json.Marshal(&v)
 		if err != nil {
 			return microerror.Mask(err)
 		}
 	}
 
-	_, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Patch(s.name, typey.MergePatchType, body)
+	_, err = s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Patch(s.name, types.MergePatchType, body)
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -186,45 +185,31 @@ func (s *Storage) Put(ctx context.Context, kv microstorage.KV) error {
 }
 
 func (s *Storage) Exists(ctx context.Context, k microstorage.K) (bool, error) {
-	key := k.Key()
-
-	data, err := s.getData(ctx)
+	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(s.name, apismetav1.GetOptions{})
 	if err != nil {
-		return false, microerror.Maskf(err, "checking existence key=%s", key)
+		return false, microerror.Mask(err)
 	}
 
-	_, ok := data[key]
-	return ok, nil
-}
-
-func (s *Storage) Search(ctx context.Context, k microstorage.K) (microstorage.KV, error) {
-	key := k.Key()
-
-	data, err := s.getData(ctx)
-	if err != nil {
-		return microstorage.KV{}, microerror.Maskf(err, "searching for key=%s", key)
+	_, ok := storageConfig.Spec.Storage.Data[k.Key()]
+	if ok {
+		return true, nil
 	}
 
-	v, ok := data[key]
-	if !ok {
-		return microstorage.KV{}, microerror.Maskf(notFoundError, "searching for key=%s", key)
-	}
-
-	return microstorage.MustKV(microstorage.NewKV(key, v)), nil
+	return false, nil
 }
 
 func (s *Storage) List(ctx context.Context, k microstorage.K) ([]microstorage.KV, error) {
-	key := k.Key()
-
-	data, err := s.getData(ctx)
+	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(s.name, apismetav1.GetOptions{})
 	if err != nil {
-		return nil, microerror.Maskf(err, "listing key=%s", key)
+		return nil, microerror.Mask(err)
 	}
+
+	key := k.Key()
 
 	// Special case.
 	if key == "/" {
 		var list []microstorage.KV
-		for k, v := range data {
+		for k, v := range storageConfig.Spec.Storage.Data {
 			list = append(list, microstorage.MustKV(microstorage.NewKV(k, v)))
 		}
 		return list, nil
@@ -233,7 +218,7 @@ func (s *Storage) List(ctx context.Context, k microstorage.K) ([]microstorage.KV
 	var list []microstorage.KV
 
 	keyLen := len(key)
-	for k, v := range data {
+	for k, v := range storageConfig.Spec.Storage.Data {
 		if len(k) <= keyLen+1 {
 			continue
 		}
@@ -254,54 +239,41 @@ func (s *Storage) List(ctx context.Context, k microstorage.K) ([]microstorage.KV
 	return list, nil
 }
 
-func (s *Storage) Delete(ctx context.Context, k microstorage.K) error {
-	key := k.Key()
+func (s *Storage) Put(ctx context.Context, kv microstorage.KV) error {
+	var err error
 
 	var body []byte
 	{
 		v := struct {
-			Data map[string]*string `json:"data"`
-		}{
-			Data: map[string]*string{
-				key: nil,
-			},
-		}
+			Spec v1alpha1.StorageConfigSpec `json:"spec"`
+		}{}
+		v.Spec.Storage.Data[kv.Key()] = kv.Val()
 
-		var err error
-		body, err = json.Marshal(&v)
+		body, err = json.Marshal(v)
 		if err != nil {
-			return microerror.Maskf(err, "marshaling %#v", v)
+			return microerror.Mask(err)
 		}
 	}
 
-	_, err := s.k8sClient.Core().RESTClient().
-		Patch(types.MergePatchType).
-		Context(ctx).
-		AbsPath(s.tpoEndpoint).
-		Body(body).
-		DoRaw()
+	_, err = s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Patch(s.name, types.MergePatchType, body)
 	if err != nil {
-		return microerror.Maskf(err, "deleting value for key=%s, patch=%s", key, body)
+		return microerror.Mask(err)
 	}
 
 	return nil
 }
 
-func (s *Storage) getData(ctx context.Context) (map[string]string, error) {
-	res, err := s.k8sClient.Core().RESTClient().
-		Get().
-		Context(ctx).
-		AbsPath(s.tpoEndpoint).
-		DoRaw()
+func (s *Storage) Search(ctx context.Context, k microstorage.K) (microstorage.KV, error) {
+	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(s.name, apismetav1.GetOptions{})
 	if err != nil {
-		return nil, microerror.Maskf(err, "get TPO")
+		return microstorage.KV{}, microerror.Mask(err)
 	}
 
-	var v customObject
-	err = json.Unmarshal(res, &v)
-	if err != nil {
-		return nil, microerror.Maskf(err, "unmarshal TPO")
+	key := k.Key()
+	value, ok := storageConfig.Spec.Storage.Data[key]
+	if ok {
+		return microstorage.MustKV(microstorage.NewKV(key, value)), nil
 	}
 
-	return v.Data, nil
+	return microstorage.KV{}, microerror.Maskf(notFoundError, "no value for key '%s'", key)
 }
