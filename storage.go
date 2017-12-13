@@ -38,7 +38,7 @@ func DefaultConfig() Config {
 		K8sClient: nil,
 		Logger:    nil,
 
-		CRD:       nil,
+		CRD:       v1alpha1.NewStorageConfigCRD(),
 		Name:      "",
 		Namespace: nil,
 	}
