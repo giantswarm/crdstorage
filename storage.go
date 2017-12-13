@@ -244,10 +244,9 @@ func (s *Storage) Put(ctx context.Context, kv microstorage.KV) error {
 
 	var body []byte
 	{
-		v := struct {
-			Spec v1alpha1.StorageConfigSpec `json:"spec"`
-		}{}
-		v.Spec.Storage.Data[kv.Key()] = kv.Val()
+		v := storageConfigJSONPatch{}
+		value := kv.Val()
+		v.Spec.Storage.Data[kv.Key()] = &value
 
 		body, err = json.Marshal(v)
 		if err != nil {
