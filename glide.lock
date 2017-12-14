@@ -1,8 +1,8 @@
-hash: 60badb0a5ad88b00d17cdc5af51374eaaec32b82eb4eb53f9948175ab2b29988
-updated: 2017-12-13T10:25:15.182327+01:00
+hash: f1d952dba4f7ea83f41ff1947d867976bf7ba7d8f096c3b7792db4706bac6e3c
+updated: 2017-12-13T18:17:29.463002+01:00
 imports:
 - name: github.com/cenkalti/backoff
-  version: 61153c768f31ee5f130071d08fc82b85208528de
+  version: 309aa717adbf351e92864cbedf9cca0b769a4b5a
 - name: github.com/davecgh/go-spew
   version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
@@ -21,7 +21,7 @@ imports:
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/giantswarm/apiextensions
-  version: 89a3f9a3ebdc24933223551964b0856ec9ad749f
+  version: 1257d8f2fa100675cac6e69a08dcd5dece300963
   subpackages:
   - pkg/apis/core/v1alpha1
   - pkg/apis/provider/v1alpha1
@@ -41,9 +41,10 @@ imports:
   subpackages:
   - storagetest
 - name: github.com/giantswarm/operatorkit
-  version: 8b3446a2ecbe707fb6ba351b035cd60508af5aec
+  version: e0c032f757dec2c4451fdd9049ccbec5264372ee
   subpackages:
   - client/k8scrdclient
+  - client/k8srestconfig
 - name: github.com/go-kit/kit
   version: a9ca6725cbbea455e61c6bc8a1ed28e81eb3493b
   subpackages:

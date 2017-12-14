@@ -28,10 +28,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cenkalti/backoff"
+	"github.com/giantswarm/apiextensions/pkg/apis/core/v1alpha1"
+	"github.com/giantswarm/apiextensions/pkg/clientset/versioned"
 	"github.com/giantswarm/micrologger/microloggertest"
 	"github.com/giantswarm/microstorage/storagetest"
-
+	"github.com/giantswarm/operatorkit/client/k8scrdclient"
+	"github.com/giantswarm/operatorkit/client/k8srestconfig"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apismetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -69,41 +76,82 @@ func init() {
 func TestIntegration(t *testing.T) {
 	var err error
 
-	var k8sClient *kubernetes.Clientset
+	var restConfig *rest.Config
 	{
-		config := &rest.Config{
-			Host: server,
-			TLSClientConfig: rest.TLSClientConfig{
-				CertFile: crtFile,
-				KeyFile:  keyFile,
-				CAFile:   caFile,
-			},
-		}
+		c := k8srestconfig.DefaultConfig()
 
-		k8sClient, err = kubernetes.NewForConfig(config)
+		c.Logger = microloggertest.New()
+
+		c.Address = server
+		c.InCluster = false
+		c.TLS.CAFile = caFile
+		c.TLS.CrtFile = crtFile
+		c.TLS.KeyFile = keyFile
+
+		restConfig, err = k8srestconfig.New(c)
 		if err != nil {
-			t.Fatalf("error creating K8s client: %#v", err)
+			t.Fatalf("error creating rest config: %#v", err)
+		}
+	}
+
+	g8sClient, err := versioned.NewForConfig(restConfig)
+	if err != nil {
+		t.Fatalf("error creating g8s client: %#v", err)
+	}
+
+	k8sClient, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		t.Fatalf("error creating k8s client: %#v", err)
+	}
+
+	k8sExtClient, err := apiextensionsclient.NewForConfig(restConfig)
+	if err != nil {
+		t.Fatalf("error creating ext client: %#v", err)
+	}
+
+	var crdClient *k8scrdclient.CRDClient
+	{
+		c := k8scrdclient.DefaultConfig()
+
+		c.K8sExtClient = k8sExtClient
+		c.Logger = microloggertest.New()
+
+		crdClient, err = k8scrdclient.New(c)
+		if err != nil {
+			t.Fatalf("error creating crd client: %#v", err)
 		}
 	}
 
 	var storage *Storage
 	{
-		config := DefaultConfig()
-		config.K8sClient = k8sClient
-		config.Logger = microloggertest.New()
+		c := DefaultConfig()
 
-		config.TPO.Name = "integration-test"
+		c.CRDClient = crdClient
+		c.G8sClient = g8sClient
+		c.K8sClient = k8sClient
+		c.Logger = microloggertest.New()
 
-		storage, err = New(config)
+		c.Name = "integration-test"
+		c.Namespace = &v1.Namespace{
+			ObjectMeta: apismetav1.ObjectMeta{
+				Name:      "integration-test",
+				Namespace: "integration-test",
+			},
+		}
+
+		storage, err = New(c)
 		if err != nil {
 			t.Fatalf("error creating storage: %#v", err)
 		}
 
 		defer func() {
-			path := path.Join(storage.tpr.Endpoint(config.TPO.Namespace), config.TPO.Name)
-			_, err := k8sClient.CoreV1().RESTClient().Delete().AbsPath(path).DoRaw()
+			b := backoff.NewExponentialBackOff()
+			b.MaxElapsedTime = 0
+			backOff := backoff.WithMaxTries(b, 7)
+
+			err := crdClient.EnsureDeleted(context.TODO(), v1alpha1.NewStorageConfigCRD(), backOff)
 			if err != nil {
-				t.Logf("error cleaning up TPO %s/%s: %#v", config.TPO.Namespace, config.TPO.Name, err)
+				t.Logf("error cleaning up CRD %s/%s: %#v", "integration-test", "integration-test", err)
 			}
 		}()
 	}

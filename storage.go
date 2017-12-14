@@ -108,7 +108,7 @@ func (s *Storage) Boot(ctx context.Context) error {
 		b.MaxElapsedTime = 0
 		backOff := backoff.WithMaxTries(b, 7)
 
-		err := s.crdClient.Ensure(ctx, s.crd, backOff)
+		err := s.crdClient.EnsureCreated(ctx, s.crd, backOff)
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -131,7 +131,7 @@ func (s *Storage) Boot(ctx context.Context) error {
 		storageConfig := &v1alpha1.StorageConfig{}
 
 		storageConfig.Kind = "StorageConfig"
-		storageConfig.APIVersion = "core.giantswarm.io"
+		storageConfig.APIVersion = "core.giantswarm.io/v1alpha1"
 		storageConfig.Name = s.name
 		storageConfig.Namespace = s.namespace.Name
 		storageConfig.Spec.Storage.Data = map[string]string{}
@@ -168,6 +168,7 @@ func (s *Storage) Delete(ctx context.Context, k microstorage.K) error {
 	var body []byte
 	{
 		v := storageConfigJSONPatch{}
+		v.Spec.Storage.Data = map[string]*string{}
 		v.Spec.Storage.Data[k.Key()] = nil
 
 		body, err = json.Marshal(&v)
@@ -245,6 +246,7 @@ func (s *Storage) Put(ctx context.Context, kv microstorage.KV) error {
 	var body []byte
 	{
 		v := storageConfigJSONPatch{}
+		v.Spec.Storage.Data = map[string]*string{}
 		value := kv.Val()
 		v.Spec.Storage.Data[kv.Key()] = &value
 
