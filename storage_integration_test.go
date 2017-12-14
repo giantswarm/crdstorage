@@ -22,7 +22,6 @@ package crdstorage
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os/exec"
 	"os/user"
 	"path"
@@ -91,23 +90,23 @@ func TestIntegration(t *testing.T) {
 
 		restConfig, err = k8srestconfig.New(c)
 		if err != nil {
-			panic(fmt.Sprintf("%#v", err))
+			t.Fatalf("error creating rest config: %#v", err)
 		}
 	}
 
 	g8sClient, err := versioned.NewForConfig(restConfig)
 	if err != nil {
-		panic(fmt.Sprintf("%#v", err))
+		t.Fatalf("error creating g8s client: %#v", err)
 	}
 
 	k8sClient, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
-		panic(fmt.Sprintf("%#v", err))
+		t.Fatalf("error creating k8s client: %#v", err)
 	}
 
 	k8sExtClient, err := apiextensionsclient.NewForConfig(restConfig)
 	if err != nil {
-		panic(fmt.Sprintf("%#v", err))
+		t.Fatalf("error creating ext client: %#v", err)
 	}
 
 	var crdClient *k8scrdclient.CRDClient
@@ -119,7 +118,7 @@ func TestIntegration(t *testing.T) {
 
 		crdClient, err = k8scrdclient.New(c)
 		if err != nil {
-			panic(fmt.Sprintf("%#v", err))
+			t.Fatalf("error creating crd client: %#v", err)
 		}
 	}
 
