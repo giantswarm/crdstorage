@@ -35,10 +35,10 @@ import (
 	"github.com/giantswarm/microstorage/storagetest"
 	"github.com/giantswarm/operatorkit/client/k8scrdclient"
 	"github.com/giantswarm/operatorkit/client/k8srestconfig"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apismetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -132,7 +132,7 @@ func TestIntegration(t *testing.T) {
 		c.Logger = microloggertest.New()
 
 		c.Name = "integration-test"
-		c.Namespace = &v1.Namespace{
+		c.Namespace = &corev1.Namespace{
 			ObjectMeta: apismetav1.ObjectMeta{
 				Name:      "integration-test",
 				Namespace: "integration-test",

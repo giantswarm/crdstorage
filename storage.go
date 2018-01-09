@@ -12,12 +12,12 @@ import (
 	"github.com/giantswarm/micrologger"
 	"github.com/giantswarm/microstorage"
 	"github.com/giantswarm/operatorkit/client/k8scrdclient"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apismetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	api "k8s.io/client-go/pkg/api/v1"
 )
 
 type Config struct {
@@ -28,7 +28,7 @@ type Config struct {
 
 	CRD       *apiextensionsv1beta1.CustomResourceDefinition
 	Name      string
-	Namespace *api.Namespace
+	Namespace *corev1.Namespace
 }
 
 func DefaultConfig() Config {
@@ -52,7 +52,7 @@ type Storage struct {
 
 	crd       *apiextensionsv1beta1.CustomResourceDefinition
 	name      string
-	namespace *api.Namespace
+	namespace *corev1.Namespace
 }
 
 // New creates an uninitialized instance of Storage. It is required to call Boot
