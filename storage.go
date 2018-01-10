@@ -106,7 +106,7 @@ func (s *Storage) Boot(ctx context.Context) error {
 	{
 		b := backoff.NewExponentialBackOff()
 		b.MaxElapsedTime = 0
-		backOff := backoff.WithMaxRetries(b, 7)
+		backOff := backoff.WithMaxTries(b, 7)
 
 		err := s.crdClient.EnsureCreated(ctx, s.crd, backOff)
 		if err != nil {
@@ -151,7 +151,7 @@ func (s *Storage) Boot(ctx context.Context) error {
 
 		b := backoff.NewExponentialBackOff()
 		b.MaxElapsedTime = 0
-		backOff := backoff.WithMaxRetries(b, 7)
+		backOff := backoff.WithMaxTries(b, 7)
 
 		err := backoff.Retry(operation, backOff)
 		if err != nil {
