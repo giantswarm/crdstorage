@@ -2,7 +2,6 @@ package crdstorage
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 
 	"github.com/cenkalti/backoff"
@@ -16,7 +15,6 @@ import (
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apismetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -163,21 +161,14 @@ func (s *Storage) Boot(ctx context.Context) error {
 }
 
 func (s *Storage) Delete(ctx context.Context, k microstorage.K) error {
-	var err error
-
-	var body []byte
-	{
-		v := storageConfigJSONPatch{}
-		v.Spec.Storage.Data = map[string]*string{}
-		v.Spec.Storage.Data[k.Key()] = nil
-
-		body, err = json.Marshal(&v)
-		if err != nil {
-			return microerror.Mask(err)
-		}
+	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(s.name, apismetav1.GetOptions{})
+	if err != nil {
+		return microerror.Mask(err)
 	}
 
-	_, err = s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Patch(s.name, types.MergePatchType, body)
+	delete(storageConfig.Spec.Storage.Data, k.Key())
+
+	_, err = s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Update(storageConfig)
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -241,22 +232,14 @@ func (s *Storage) List(ctx context.Context, k microstorage.K) ([]microstorage.KV
 }
 
 func (s *Storage) Put(ctx context.Context, kv microstorage.KV) error {
-	var err error
-
-	var body []byte
-	{
-		v := storageConfigJSONPatch{}
-		v.Spec.Storage.Data = map[string]*string{}
-		value := kv.Val()
-		v.Spec.Storage.Data[kv.Key()] = &value
-
-		body, err = json.Marshal(v)
-		if err != nil {
-			return microerror.Mask(err)
-		}
+	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(s.name, apismetav1.GetOptions{})
+	if err != nil {
+		return microerror.Mask(err)
 	}
 
-	_, err = s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Patch(s.name, types.MergePatchType, body)
+	storageConfig.Spec.Storage.Data[kv.Key()] = kv.Val()
+
+	_, err = s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Update(storageConfig)
 	if err != nil {
 		return microerror.Mask(err)
 	}

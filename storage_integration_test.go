@@ -147,7 +147,7 @@ func TestIntegration(t *testing.T) {
 		defer func() {
 			b := backoff.NewExponentialBackOff()
 			b.MaxElapsedTime = 0
-			backOff := backoff.WithMaxRetries(b, 7)
+			backOff := backoff.WithMaxTries(b, 7)
 
 			err := crdClient.EnsureDeleted(context.TODO(), v1alpha1.NewStorageConfigCRD(), backOff)
 			if err != nil {

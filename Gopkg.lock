@@ -57,7 +57,7 @@
     "pkg/clientset/versioned/typed/core/v1alpha1",
     "pkg/clientset/versioned/typed/provider/v1alpha1"
   ]
-  revision = "75c93359f047754a11e598787fb09d20b99745ca"
+  revision = "f0b8bcd6122deaf8be38b9705ac528cf4b749e3a"
 
 [[projects]]
   branch = "master"
@@ -82,7 +82,7 @@
     ".",
     "storagetest"
   ]
-  revision = "7f39386c3f39a6b493f1dc38a405d99277c15b83"
+  revision = "4411a6307c6b844b7f9e68aaba37407b41b1c4d7"
 
 [[projects]]
   branch = "master"
@@ -160,7 +160,7 @@
     "ptypes/duration",
     "ptypes/timestamp"
   ]
-  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
+  revision = "c65a0412e71e8b9b3bfd22925720d23c0f054237"
 
 [[projects]]
   branch = "master"
@@ -206,10 +206,10 @@
   revision = "08cceb5d0b5331634b9826762a8fd53b29b86ad8"
 
 [[projects]]
-  branch = "master"
   name = "github.com/juju/ratelimit"
   packages = ["."]
   revision = "59fac5042749a5afb9af70e813da1dd5474f0167"
+  version = "1.0.1"
 
 [[projects]]
   branch = "master"
