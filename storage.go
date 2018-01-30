@@ -237,6 +237,10 @@ func (s *Storage) Put(ctx context.Context, kv microstorage.KV) error {
 		return microerror.Mask(err)
 	}
 
+	if storageConfig.Spec.Storage.Data == nil {
+		storageConfig.Spec.Storage.Data = map[string]string{}
+	}
+
 	storageConfig.Spec.Storage.Data[kv.Key()] = kv.Val()
 
 	_, err = s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Update(storageConfig)
