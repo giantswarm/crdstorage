@@ -45,31 +45,6 @@ type Config struct {
 	TLS       TLSClientConfig
 }
 
-// DefaultConfig provides a default configuration to create a new Kubernetes
-// Clientset by best effort.
-func DefaultConfig() Config {
-	var err error
-
-	var newLogger micrologger.Logger
-	{
-		config := micrologger.DefaultConfig()
-		newLogger, err = micrologger.New(config)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	return Config{
-		// Dependencies.
-		Logger: newLogger,
-
-		// Settings.
-		Address:   "",
-		InCluster: true,
-		TLS:       TLSClientConfig{},
-	}
-}
-
 // New returns a Kubernetes Clientset with the provided configuration.
 func New(config Config) (kubernetes.Interface, error) {
 	// Dependencies.
@@ -85,8 +60,7 @@ func New(config Config) (kubernetes.Interface, error) {
 	if config.Address != "" {
 		_, err := url.Parse(config.Address)
 		if err != nil {
-			return nil, microerror.Maskf(invalidConfigError,
-				"config.Address=%s must be a valid URL: %s", config.Address, err)
+			return nil, microerror.Maskf(invalidConfigError, "config.Address=%s must be a valid URL: %s", config.Address, err)
 		}
 	}
 
@@ -94,14 +68,14 @@ func New(config Config) (kubernetes.Interface, error) {
 
 	var restConfig *rest.Config
 	if config.InCluster {
-		config.Logger.Log("debug", "creating in-cluster config")
+		config.Logger.Log("level", "debug", "message", "creating in-cluster config")
 
 		restConfig, err = rest.InClusterConfig()
 		if err != nil {
 			return nil, microerror.Mask(err)
 		}
 	} else {
-		config.Logger.Log("debug", "creating out-cluster config")
+		config.Logger.Log("level", "debug", "message", "creating out-cluster config")
 
 		restConfig = &rest.Config{
 			Host: config.Address,
