@@ -25,7 +25,7 @@
   branch = "master"
   name = "github.com/giantswarm/backoff"
 
-[[override]]
+[[constraint]]
   branch = "kubernetes-1.13.2"
   name = "github.com/giantswarm/apiextensions"
 
@@ -42,7 +42,7 @@
   name = "github.com/giantswarm/microstorage"
 
 [[constraint]]
-  branch = "master"
+  branch = "kubernetes-1.13.2"
   name = "github.com/giantswarm/operatorkit"
 
 [[constraint]]
