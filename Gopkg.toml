@@ -25,8 +25,8 @@
   branch = "master"
   name = "github.com/giantswarm/backoff"
 
-[[constraint]]
-  branch = "master"
+[[override]]
+  branch = "kubernetes-1.13.2"
   name = "github.com/giantswarm/apiextensions"
 
 [[constraint]]
@@ -47,19 +47,19 @@
 
 [[constraint]]
   name = "k8s.io/api"
-  version = "kubernetes-1.10.4"
+  version = "kubernetes-1.13.2"
 
 [[constraint]]
   name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.10.4"
+  version = "kubernetes-1.13.2"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.10.4"
+  version = "kubernetes-1.13.2"
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.10.4"
+  version = "kubernetes-1.13.2"
 
 
 
