@@ -19,7 +19,7 @@ import (
 )
 
 type Config struct {
-	CRDClient *k8scrdclient.CRDClient
+	CRDClient k8scrdclient.Interface
 	G8sClient versioned.Interface
 	K8sClient kubernetes.Interface
 	Logger    micrologger.Logger
@@ -30,7 +30,7 @@ type Config struct {
 }
 
 type Storage struct {
-	crdClient *k8scrdclient.CRDClient
+	crdClient k8scrdclient.Interface
 	g8sClient versioned.Interface
 	k8sClient kubernetes.Interface
 	logger    micrologger.Logger
