@@ -101,11 +101,9 @@ func (s *Storage) Boot(ctx context.Context) error {
 	{
 		_, err := s.k8sClient.CoreV1().Namespaces().Create(s.namespace)
 		if errors.IsAlreadyExists(err) {
-			// TODO logs
+			// no-op
 		} else if err != nil {
 			return microerror.Mask(err)
-		} else {
-			// TODO logs
 		}
 	}
 
@@ -122,11 +120,9 @@ func (s *Storage) Boot(ctx context.Context) error {
 		operation := func() error {
 			_, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Create(storageConfig)
 			if errors.IsAlreadyExists(err) {
-				// TODO logs
+				// no-op
 			} else if err != nil {
 				return microerror.Mask(err)
-			} else {
-				// TODO logs
 			}
 
 			return nil
