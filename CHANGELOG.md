@@ -10,3 +10,4 @@ and this project's packages adheres to [Semantic Versioning](http://semver.org/s
 ### Changed
 
 - Switch from dep to go modules.
+- Applying architect orb.
