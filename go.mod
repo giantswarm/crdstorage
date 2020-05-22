@@ -4,9 +4,9 @@ go 1.13
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/giantswarm/apiextensions v0.2.0
+	github.com/giantswarm/apiextensions v0.4.2-0.20200522154208-47998834a650
 	github.com/giantswarm/backoff v0.2.0
-	github.com/giantswarm/k8sclient v0.2.0
+	github.com/giantswarm/k8sclient/v3 v3.1.0
 	github.com/giantswarm/microerror v0.2.0
 	github.com/giantswarm/micrologger v0.3.1
 	github.com/giantswarm/microstorage v0.2.0
