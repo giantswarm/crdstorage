@@ -7,13 +7,15 @@ and this project's packages adheres to [Semantic Versioning](http://semver.org/s
 
 ## [Unreleased]
 
+## [0.3.0]
+
 ### Removed
 
-- Removed creation of StorageConfig CRD now installed via `opsctl ensure crds`.
+- Removed creation of `StorageConfig` CRD now installed via `opsctl ensure crds`.
 
 
 
-## [v0.2.0]
+## [0.2.0]
 
 ### Changed
 
@@ -22,5 +24,6 @@ and this project's packages adheres to [Semantic Versioning](http://semver.org/s
 
 
 
-[Unreleased]: https://github.com/giantswarm/crdstorage/compare/v0.2.0..HEAD
-[v0.2.0]: https://github.com/giantswarm/crdstorage/releases/tag/v0.2.0
+[Unreleased]: https://github.com/giantswarm/crdstorage/compare/v0.3.0..HEAD
+[0.3.0]: https://github.com/giantswarm/crdstorage/releases/tag/v0.3.0
+[0.2.0]: https://github.com/giantswarm/crdstorage/releases/tag/v0.2.0
