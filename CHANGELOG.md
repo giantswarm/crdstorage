@@ -7,12 +7,19 @@ and this project's packages adheres to [Semantic Versioning](http://semver.org/s
 
 ## [Unreleased]
 
+### Removed
+
+- Removed creation of StorageConfig CRD now installed via `opsctl ensure crds`.
+
+
+
 ## [v0.2.0]
 
 ### Changed
 
 - Switch from dep to go modules.
 - Applying architect orb.
+
 
 
 [Unreleased]: https://github.com/giantswarm/crdstorage/compare/v0.2.0..HEAD
