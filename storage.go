@@ -7,35 +7,29 @@ import (
 	"github.com/giantswarm/apiextensions/pkg/apis/core/v1alpha1"
 	"github.com/giantswarm/apiextensions/pkg/clientset/versioned"
 	"github.com/giantswarm/backoff"
-	"github.com/giantswarm/k8sclient/k8scrdclient"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/giantswarm/microstorage"
 	corev1 "k8s.io/api/core/v1"
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apismetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 type Config struct {
-	CRDClient k8scrdclient.Interface
 	G8sClient versioned.Interface
 	K8sClient kubernetes.Interface
 	Logger    micrologger.Logger
 
-	CRD       *apiextensionsv1beta1.CustomResourceDefinition
 	Name      string
 	Namespace *corev1.Namespace
 }
 
 type Storage struct {
-	crdClient k8scrdclient.Interface
 	g8sClient versioned.Interface
 	k8sClient kubernetes.Interface
 	logger    micrologger.Logger
 
-	crd       *apiextensionsv1beta1.CustomResourceDefinition
 	name      string
 	namespace *corev1.Namespace
 }
@@ -44,9 +38,6 @@ type Storage struct {
 // before running any read/write operations against the returned Storage
 // instance.
 func New(config Config) (*Storage, error) {
-	if config.CRDClient == nil {
-		return nil, microerror.Maskf(invalidConfigError, "%T.CRDClient must not be empty", config)
-	}
 	if config.G8sClient == nil {
 		return nil, microerror.Maskf(invalidConfigError, "%T.G8sClient must not be empty", config)
 	}
@@ -56,10 +47,6 @@ func New(config Config) (*Storage, error) {
 	if config.Logger == nil {
 		return nil, microerror.Maskf(invalidConfigError, "%T.Logger must not be empty", config)
 	}
-
-	if config.CRD == nil {
-		config.CRD = v1alpha1.NewStorageConfigCRD()
-	}
 	if config.Name == "" {
 		return nil, microerror.Maskf(invalidConfigError, "%T.Name must not be empty", config)
 	}
@@ -68,15 +55,10 @@ func New(config Config) (*Storage, error) {
 	}
 
 	s := &Storage{
-		crdClient: config.CRDClient,
 		g8sClient: config.G8sClient,
 		k8sClient: config.K8sClient,
-		logger: config.Logger.With(
-			"crdName", config.CRD.GetName(),
-			"crdVersion", config.CRD.GroupVersionKind(),
-		),
+		logger:    config.Logger,
 
-		crd:       config.CRD,
 		name:      config.Name,
 		namespace: config.Namespace,
 	}
@@ -87,16 +69,6 @@ func New(config Config) (*Storage, error) {
 // Boot initializes the Storage by ensuring Kubernetes resources used by the
 // Storage are in place. It is safe to call Boot more than once.
 func (s *Storage) Boot(ctx context.Context) error {
-	// Create CRD.
-	{
-		b := backoff.NewMaxRetries(7, backoff.ShortMaxInterval)
-
-		err := s.crdClient.EnsureCreated(ctx, s.crd, b)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-
 	// Create namespace.
 	{
 		_, err := s.k8sClient.CoreV1().Namespaces().Create(s.namespace)
@@ -107,15 +79,14 @@ func (s *Storage) Boot(ctx context.Context) error {
 		}
 	}
 
-	// Create CRO.
+	// Create CR.
 	{
-		storageConfig := &v1alpha1.StorageConfig{}
-
-		storageConfig.Kind = "StorageConfig"
-		storageConfig.APIVersion = "core.giantswarm.io/v1alpha1"
-		storageConfig.Name = s.name
-		storageConfig.Namespace = s.namespace.Name
-		storageConfig.Spec.Storage.Data = map[string]string{}
+		storageConfig := &v1alpha1.StorageConfig{
+			ObjectMeta: apismetav1.ObjectMeta{
+				Name:      s.name,
+				Namespace: s.namespace.Name,
+			},
+		}
 
 		operation := func() error {
 			_, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Create(storageConfig)

@@ -31,8 +31,8 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/giantswarm/apiextensions/pkg/apis/core/v1alpha1"
 	"github.com/giantswarm/apiextensions/pkg/clientset/versioned"
-	"github.com/giantswarm/k8sclient/k8scrdclient"
-	"github.com/giantswarm/k8sclient/k8srestconfig"
+	"github.com/giantswarm/k8sclient/v3/pkg/k8scrdclient"
+	"github.com/giantswarm/k8sclient/v3/pkg/k8srestconfig"
 	"github.com/giantswarm/micrologger/microloggertest"
 	"github.com/giantswarm/microstorage/storagetest"
 	corev1 "k8s.io/api/core/v1"
@@ -78,15 +78,17 @@ func TestIntegration(t *testing.T) {
 
 	var restConfig *rest.Config
 	{
-		c := k8srestconfig.DefaultConfig()
-
-		c.Logger = microloggertest.New()
-
-		c.Address = server
-		c.InCluster = false
-		c.TLS.CAFile = caFile
-		c.TLS.CrtFile = crtFile
-		c.TLS.KeyFile = keyFile
+		c := k8srestconfig.Config{
+			Logger:    microloggertest.New(),
+			Address:   server,
+			InCluster: false,
+			Timeout:   0,
+			TLS: k8srestconfig.ConfigTLS{
+				CAFile:  caFile,
+				CrtFile: crtFile,
+				KeyFile: keyFile,
+			},
+		}
 
 		restConfig, err = k8srestconfig.New(c)
 		if err != nil {
@@ -111,10 +113,10 @@ func TestIntegration(t *testing.T) {
 
 	var crdClient *k8scrdclient.CRDClient
 	{
-		c := k8scrdclient.DefaultConfig()
-
-		c.K8sExtClient = k8sExtClient
-		c.Logger = microloggertest.New()
+		c := k8scrdclient.Config{
+			K8sExtClient: k8sExtClient,
+			Logger:       microloggertest.New(),
+		}
 
 		crdClient, err = k8scrdclient.New(c)
 		if err != nil {
@@ -124,18 +126,16 @@ func TestIntegration(t *testing.T) {
 
 	var storage *Storage
 	{
-		c := DefaultConfig()
-
-		c.CRDClient = crdClient
-		c.G8sClient = g8sClient
-		c.K8sClient = k8sClient
-		c.Logger = microloggertest.New()
-
-		c.Name = "integration-test"
-		c.Namespace = &corev1.Namespace{
-			ObjectMeta: apismetav1.ObjectMeta{
-				Name:      "integration-test",
-				Namespace: "integration-test",
+		c := Config{
+			G8sClient: g8sClient,
+			K8sClient: k8sClient,
+			Logger:    microloggertest.New(),
+			Name:      "integration-test",
+			Namespace: &corev1.Namespace{
+				ObjectMeta: apismetav1.ObjectMeta{
+					Name:      "integration-test",
+					Namespace: "integration-test",
+				},
 			},
 		}
 
@@ -147,13 +147,24 @@ func TestIntegration(t *testing.T) {
 		defer func() {
 			b := backoff.NewExponentialBackOff()
 			b.MaxElapsedTime = 0
-			backOff := backoff.WithMaxTries(b, 7)
+			backOff := backoff.WithMaxRetries(b, 7)
 
 			err := crdClient.EnsureDeleted(context.TODO(), v1alpha1.NewStorageConfigCRD(), backOff)
 			if err != nil {
 				t.Logf("error cleaning up CRD %s/%s: %#v", "integration-test", "integration-test", err)
 			}
 		}()
+	}
+
+	{
+		b := backoff.NewExponentialBackOff()
+		b.MaxElapsedTime = 0
+		backOff := backoff.WithMaxRetries(b, 7)
+
+		err := crdClient.EnsureCreated(context.TODO(), v1alpha1.NewStorageConfigCRD(), backOff)
+		if err != nil {
+			t.Logf("error creating CRD %s/%s: %#v", "integration-test", "integration-test", err)
+		}
 	}
 
 	err = storage.Boot(context.TODO())
