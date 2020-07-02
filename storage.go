@@ -81,10 +81,17 @@ func (s *Storage) Boot(ctx context.Context) error {
 
 	// Create CR.
 	{
+		data := make(map[string]string)
+
 		storageConfig := &v1alpha1.StorageConfig{
 			ObjectMeta: apismetav1.ObjectMeta{
 				Name:      s.name,
 				Namespace: s.namespace.Name,
+			},
+			Spec: v1alpha1.StorageConfigSpec{
+				Storage: v1alpha1.StorageConfigSpecStorage{
+					Data: data,
+				},
 			},
 		}
 
