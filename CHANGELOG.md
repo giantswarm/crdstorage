@@ -7,6 +7,12 @@ and this project's packages adheres to [Semantic Versioning](http://semver.org/s
 
 ## [Unreleased]
 
+### Changed
+
+- Improve initial CR creation.
+
+
+
 ## [0.3.0]
 
 ### Removed
