@@ -71,7 +71,7 @@ func New(config Config) (*Storage, error) {
 func (s *Storage) Boot(ctx context.Context) error {
 	// Create namespace.
 	{
-		_, err := s.k8sClient.CoreV1().Namespaces().Create(s.namespace)
+		_, err := s.k8sClient.CoreV1().Namespaces().Create(ctx, s.namespace, apismetav1.CreateOptions{})
 		if errors.IsAlreadyExists(err) {
 			// no-op
 		} else if err != nil {
@@ -96,7 +96,7 @@ func (s *Storage) Boot(ctx context.Context) error {
 		}
 
 		operation := func() error {
-			_, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Create(storageConfig)
+			_, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Create(ctx, storageConfig, apismetav1.CreateOptions{})
 			if errors.IsAlreadyExists(err) {
 				// no-op
 			} else if err != nil {
@@ -118,14 +118,14 @@ func (s *Storage) Boot(ctx context.Context) error {
 }
 
 func (s *Storage) Delete(ctx context.Context, k microstorage.K) error {
-	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(s.name, apismetav1.GetOptions{})
+	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(ctx, s.name, apismetav1.GetOptions{})
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
 	delete(storageConfig.Spec.Storage.Data, k.Key())
 
-	_, err = s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Update(storageConfig)
+	_, err = s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Update(ctx, storageConfig, apismetav1.UpdateOptions{})
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -134,7 +134,7 @@ func (s *Storage) Delete(ctx context.Context, k microstorage.K) error {
 }
 
 func (s *Storage) Exists(ctx context.Context, k microstorage.K) (bool, error) {
-	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(s.name, apismetav1.GetOptions{})
+	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(ctx, s.name, apismetav1.GetOptions{})
 	if err != nil {
 		return false, microerror.Mask(err)
 	}
@@ -148,7 +148,7 @@ func (s *Storage) Exists(ctx context.Context, k microstorage.K) (bool, error) {
 }
 
 func (s *Storage) List(ctx context.Context, k microstorage.K) ([]microstorage.KV, error) {
-	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(s.name, apismetav1.GetOptions{})
+	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(ctx, s.name, apismetav1.GetOptions{})
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}
@@ -189,7 +189,7 @@ func (s *Storage) List(ctx context.Context, k microstorage.K) ([]microstorage.KV
 }
 
 func (s *Storage) Put(ctx context.Context, kv microstorage.KV) error {
-	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(s.name, apismetav1.GetOptions{})
+	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(ctx, s.name, apismetav1.GetOptions{})
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -200,7 +200,7 @@ func (s *Storage) Put(ctx context.Context, kv microstorage.KV) error {
 
 	storageConfig.Spec.Storage.Data[kv.Key()] = kv.Val()
 
-	_, err = s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Update(storageConfig)
+	_, err = s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Update(ctx, storageConfig, apismetav1.UpdateOptions{})
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -209,7 +209,7 @@ func (s *Storage) Put(ctx context.Context, kv microstorage.KV) error {
 }
 
 func (s *Storage) Search(ctx context.Context, k microstorage.K) (microstorage.KV, error) {
-	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(s.name, apismetav1.GetOptions{})
+	storageConfig, err := s.g8sClient.CoreV1alpha1().StorageConfigs(s.namespace.Name).Get(ctx, s.name, apismetav1.GetOptions{})
 	if err != nil {
 		return microstorage.KV{}, microerror.Mask(err)
 	}
