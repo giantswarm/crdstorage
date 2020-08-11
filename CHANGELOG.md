@@ -7,6 +7,8 @@ and this project's packages adheres to [Semantic Versioning](http://semver.org/s
 
 ## [Unreleased]
 
+## [2.0.0] - 2020-08-11
+
 ### Changed
 
 - Update Kubernetes dependencies to v1.18.5.
@@ -36,8 +38,8 @@ and this project's packages adheres to [Semantic Versioning](http://semver.org/s
 
 
 
-[Unreleased]: https://github.com/giantswarm/crdstorage/compare/v0.3.1...HEAD
-
+[Unreleased]: https://github.com/giantswarm/crdstorage/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/giantswarm/crdstorage/compare/v0.3.1...v2.0.0
 [0.3.1]: https://github.com/giantswarm/crdstorage/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/giantswarm/crdstorage/compare/v0.2.0...v0.3.0
 
