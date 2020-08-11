@@ -7,6 +7,10 @@ and this project's packages adheres to [Semantic Versioning](http://semver.org/s
 
 ## [Unreleased]
 
+### Changed
+
+- Update Kubernetes dependencies to v1.18.5.
+
 ## [0.3.1]
 
 ### Changed
