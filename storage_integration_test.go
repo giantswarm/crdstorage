@@ -29,8 +29,8 @@ import (
 	"testing"
 
 	"github.com/cenkalti/backoff"
-	"github.com/giantswarm/apiextensions/v2/pkg/apis/core/v1alpha1"
-	"github.com/giantswarm/apiextensions/v2/pkg/clientset/versioned"
+	"github.com/giantswarm/apiextensions/v3/pkg/apis/core/v1alpha1"
+	"github.com/giantswarm/apiextensions/v3/pkg/clientset/versioned"
 	"github.com/giantswarm/k8sclient/v4/pkg/k8scrdclient"
 	"github.com/giantswarm/k8sclient/v4/pkg/k8srestconfig"
 	"github.com/giantswarm/micrologger/microloggertest"
